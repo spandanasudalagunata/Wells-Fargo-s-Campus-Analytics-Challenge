@@ -1,0 +1,182 @@
+---
+title: "Data Exploration"
+output: html_notebook
+---
+
+```{r warning = F}
+library("dplyr")
+library("magrittr")
+library("readxl")
+```
+
+
+```{r}
+sheet1 <- read_excel(
+  "data/dataset.xlsx",
+  sheet = "Individuals",
+  range = "A1:P27055"
+)
+
+sheet2 <- read_excel(
+  "data/dataset.xlsx",
+  sheet = "Carbon Footprint",
+  range = "A2:N29"
+)
+```
+
+```{r}
+hist(sheet1$Quality_of_Life_Importance__1_10)
+```
+
+```{r}
+cor(sheet1$Consumption, sheet1$Quality_of_Life_Importance__1_10)
+
+```
+
+
+# Fill all `NA` values with 0
+
+```{r}
+sheet1[is.na(sheet1)] = 0 
+
+sheet1 %>% head()
+```
+
+```{r}
+sheet2[is.na(sheet2)] = 0 
+
+sheet2
+```
+
+# Fill in the carbon footprint for each activity
+
+```{r}
+sources <- c(
+  "solar_powered_water_heater",
+  "gas_water_heater",
+  "electric_water_heater_peak_hour",
+  "electric_water_heater_off_peak",
+  "gas",
+  "natural_gas",
+  "hybrid",
+  "electric_peak_hours",
+  "electric_off_peak_hours",
+  "jetfuel"
+)
+
+activities <- c(
+  "Household heating => 70F","Household heating < 70F",
+  "Use of heat pump","Use of air conditioner",
+  "shower - short","shower - long (> 3 min)",
+  "bath","wash-up",
+  "use of dishwasher","use of clothes washer",
+  "use of clothes dryer", "use of cooking range",
+  "use of  oven","use of self-clean feature of electric oven",
+  "Small kitchen appliance in the home", "TV/computer use",
+  "air travel - large plane", "air travel - small  plane (<50 seats)",
+  "car trips- self only", "car trips - driver and self",
+  "car trips - 2+ people with multiple end points", "trips using public ground transportation",
+  "bags of garbage disposed", "bags of recycling deposited (negative CF)",
+  "bags of compost deposited (negative CF)","hazardous or electric items disposed",
+  "large items disposed"
+)
+```
+
+```{r}
+for (activity in activities) {
+  cf_activity <- as.vector(unlist(sheet2[sheet2$Activity == activity, sources]))
+  activity_sources <- sheet1[sheet1$Activity == activity, sources]
+  result <- data.frame(mapply(`*`, activity_sources, cf_activity, SIMPLIFY = F)) 
+  
+  sheet1[sheet1$Activity == activity, sources] <- result
+}
+```
+
+
+```{r}
+sheet1
+```
+
+```{r}
+sheet1 <- sheet1 %>%
+  mutate(total_cf = Consumption * rowSums(.[,sources]))
+  
+```
+
+
+
+
+```{r}
+sheet1 %>%
+group_by(Indnum) %>% 
+  summarise(total_QLI = sum(Quality_of_Life_Importance__1_10))
+```
+
+
+```{r}
+sheet1 %>%
+group_by(Indnum) %>% 
+  summarise(total_CI = sum(total_cf))
+```
+
+
+
+```{r}
+plot(sheet1$Quality_of_Life_Importance__1_10, sheet1$Consumption)
+#lines(sheet1$Quality_of_Life_Importance__1_10, sheet1$Consumption)
+```
+
+```{r}
+boxplot(sheet1$Consumption)
+```
+
+
+
+```{r}
+boxplot(sheet1$Quality_of_Life_Importance__1_10)
+```
+
+
+```{r}
+sheet1 %>%
+group_by(Activity) %>% 
+  summarise(total_C = sum(Consumption)) -> C
+C
+
+```
+
+
+```{r}
+sheet1 %>%
+group_by(Activity) %>% 
+  summarise(total_Cfa = sum(total_cf)) -> Cfa
+Cfa
+```
+
+```{r}
+#plot(C$total_C,Cfa$total_Cfa)
+```
+
+
+```{r}
+summary(sheet1$Consumption)
+```
+
+```{r}
+filter(sheet1, sheet1$Consumption < 0)
+```
+
+```{r}
+summary(sheet1)
+```
+  
+```{r}
+hist(sheet1$Consumption)
+```
+
+
+```{r}
+hist(sheet1$Quality_of_Life_Importance__1_10)
+```
+
+
